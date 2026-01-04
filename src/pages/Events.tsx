@@ -7,6 +7,7 @@ import CalendarPage from './calendar/CalendarPage';
 import CreateEventModal from '../components/events/CreateEventModal';
 import { supabase } from '../services/supabase';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 interface Event {
   id: string;
@@ -18,6 +19,7 @@ interface Event {
 
 export function Events() {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [events, setEvents] = useState<Event[]>([]);
   const [search, setSearch] = useState('');
@@ -28,13 +30,30 @@ export function Events() {
   const fetchEvents = async () => {
     setLoading(true);
 
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .order('date', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, name, client, event_date, status, region') // Explicitly select and alias
+        .order('event_date', { ascending: true });
+      
+      // Map event_date to date for consistency
+      // If your database column has a different name, update DB_COLUMNS.EVENT_DATE in src/utils/dbMapping.ts
+      const mappedData = data?.map((event: any) => ({
+        ...event,
+        date: event.event_date || event.start_date || event.scheduled_date || event.date
+      }));
 
-    if (!error && data) setEvents(data);
-    setLoading(false);
+      if (error) {
+        console.error('Error fetching events:', error);
+        // Don't clear events on error, just log it
+      } else if (mappedData) {
+        setEvents(mappedData as Event[]);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching events:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -45,7 +64,7 @@ export function Events() {
   const rescheduleEvent = async (id: string, newDate: string) => {
     await supabase
       .from('events')
-      .update({ date: newDate })
+      .update({ event_date: newDate }) // Changed from 'date' to 'event_date'
       .eq('id', id);
 
     fetchEvents();
@@ -164,9 +183,39 @@ export function Events() {
         <CreateEventModal
           onClose={() => setOpenCreate(false)}
           onCreate={async (event) => {
-            await supabase.from('events').insert(event);
-            setOpenCreate(false);
-            fetchEvents();
+            if (!user) {
+              alert('You must be logged in to create events');
+              return;
+            }
+
+            try {
+              const { error } = await supabase.from('events').insert({
+                name: event.name,
+                client: event.client,
+                event_date: event.date, // Map 'date' to 'event_date' for database
+                status: event.status,
+                region: user.region
+              });
+              if (error) {
+                console.error('Error creating event:', error);
+                
+                let errorMessage = error.message || 'Failed to create event. Please try again.';
+                
+                if (error.message?.includes('permission denied') || error.message?.includes('policy')) {
+                  errorMessage = 'Permission denied. Please check your database RLS policies. See SUPABASE_RLS_FIX.md for help.';
+                } else if (error.message?.includes('column') || error.message?.includes('schema')) {
+                  errorMessage = `Database error: ${error.message}. Please check your table schema.`;
+                }
+                
+                alert(`Failed to create event: ${errorMessage}`);
+                return;
+              }
+              setOpenCreate(false);
+              fetchEvents();
+            } catch (err) {
+              console.error('Unexpected error:', err);
+              alert('An unexpected error occurred. Please try again.');
+            }
           }}
         />
       )}

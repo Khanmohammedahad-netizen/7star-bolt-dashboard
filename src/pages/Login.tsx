@@ -13,16 +13,33 @@ export default function Login() {
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      setError(error.message);
+      if (loginError) {
+        setError(loginError.message || 'Login failed. Please check your credentials.');
+        setLoading(false);
+        return;
+      }
+
+      // If successful, the auth state change will handle navigation
+      // But we can verify the session was created
+      if (!data.session) {
+        setError('Login failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      // Don't set loading to false here - let the auth context handle it
+      // The page will automatically redirect when user is set
+    } catch (err) {
+      console.error('Unexpected login error:', err);
+      setError('An unexpected error occurred. Please try again.');
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (

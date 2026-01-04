@@ -12,11 +12,19 @@ import { Users } from './pages/Users';
 import { AuditLog } from './pages/AuditLog';
 
 export default function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
 
   // ✅ MUST be inside function
   if (loading) {
-    return <div className="p-10">Loading…</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+          <p className="text-sm text-gray-400 mt-2">Initializing application</p>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
@@ -31,7 +39,7 @@ export default function App() {
         <Header
           companyName="7 Star International"
           userName={user.email}
-          onLogout={() => {}}
+          onLogout={logout}
         />
 
         <main className="flex-1 p-8 overflow-auto">

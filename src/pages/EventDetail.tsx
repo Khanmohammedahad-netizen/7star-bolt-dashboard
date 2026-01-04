@@ -52,39 +52,66 @@ export function EventDetail() {
 
     setLoading(true);
 
-    const { data: eventData } = await supabase
-      .from('events')
-      .select('*')
-      .eq('id', id)
-      .single();
+    try {
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-    if (!eventData) {
-      setEvent(null);
+      if (eventError) {
+        console.error('Error fetching event:', eventError);
+        setEvent(null);
+        setLoading(false);
+        return;
+      }
+
+      if (!eventData) {
+        setEvent(null);
+        setLoading(false);
+        return;
+      }
+
+      // Map event_date to date for consistency
+      // If your database column has a different name, check DATABASE_COLUMN_FIX.md
+      const mappedEvent = {
+        ...eventData,
+        date: (eventData as any).event_date || (eventData as any).start_date || (eventData as any).scheduled_date || (eventData as any).date
+      };
+
+      // 🔒 REGION GUARD (frontend safety, RLS still mandatory)
+      if (user?.role !== 'admin' && user?.region !== mappedEvent.region) {
+        setEvent(null);
+        setLoading(false);
+        return;
+      }
+
+      const { data: materialData, error: materialError } = await supabase
+        .from('materials')
+        .select('*')
+        .eq('event_id', id);
+
+      if (materialError) {
+        console.error('Error fetching materials:', materialError);
+      }
+
+      const { data: paymentData, error: paymentError } = await supabase
+        .from('payments')
+        .select('*')
+        .eq('event_id', id);
+
+      if (paymentError) {
+        console.error('Error fetching payments:', paymentError);
+      }
+
+      setEvent(mappedEvent as Event);
+      setMaterials(materialData || []);
+      setPayments(paymentData || []);
+    } catch (err) {
+      console.error('Unexpected error fetching event details:', err);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // 🔒 REGION GUARD (frontend safety, RLS still mandatory)
-    if (user?.role !== 'admin' && user?.region !== eventData.region) {
-      setEvent(null);
-      setLoading(false);
-      return;
-    }
-
-    const { data: materialData } = await supabase
-      .from('materials')
-      .select('*')
-      .eq('event_id', id);
-
-    const { data: paymentData } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('event_id', id);
-
-    setEvent(eventData);
-    setMaterials(materialData || []);
-    setPayments(paymentData || []);
-    setLoading(false);
   };
 
   useEffect(() => {
