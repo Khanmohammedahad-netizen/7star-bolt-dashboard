@@ -18,6 +18,27 @@ export function AuditLog() {
   const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      const loadLogs = async () => {
+        setLoading(true);
+
+        const { data } = await supabase
+          .from('audit_logs')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (data) setLogs(data);
+        setLoading(false);
+      };
+
+      loadLogs();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
   // 🔐 ADMIN ONLY
   if (user?.role !== 'admin') {
     return (
@@ -26,23 +47,6 @@ export function AuditLog() {
       </div>
     );
   }
-
-  useEffect(() => {
-    const loadLogs = async () => {
-      setLoading(true);
-
-      const { data } = await supabase
-        .from('audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (data) setLogs(data);
-      setLoading(false);
-    };
-
-    loadLogs();
-  }, []);
 
   const badgeVariant = (action: string) => {
     switch (action) {

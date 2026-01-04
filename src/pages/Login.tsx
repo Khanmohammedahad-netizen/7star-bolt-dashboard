@@ -6,20 +6,29 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSignup, setIsSignup] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = isSignup
+      ? await supabase.auth.signUp({
+          email,
+          password,
+        })
+      : await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
     if (error) {
       setError(error.message);
+    } else if (isSignup) {
+      setError('Account created! Please login.');
+      setIsSignup(false);
     }
 
     setLoading(false);
@@ -28,7 +37,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <form
-        onSubmit={handleLogin}
+        onSubmit={handleSubmit}
         className="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm space-y-4"
       >
         {/* COMPANY NAME */}
@@ -39,7 +48,7 @@ export default function Login() {
         </div>
 
         <h1 className="text-xl font-semibold text-center mt-2">
-          Sign in to Dashboard
+          {isSignup ? 'Sign up for Dashboard' : 'Sign in to Dashboard'}
         </h1>
 
         {error && (
@@ -71,7 +80,15 @@ export default function Login() {
           disabled={loading}
           className="w-full bg-blue-600 text-white py-2 rounded disabled:opacity-50"
         >
-          {loading ? 'Signing in…' : 'Login'}
+          {loading ? (isSignup ? 'Signing up…' : 'Signing in…') : (isSignup ? 'Sign Up' : 'Login')}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setIsSignup(!isSignup)}
+          className="w-full text-blue-600 py-2"
+        >
+          {isSignup ? 'Already have an account? Login' : 'Need an account? Sign Up'}
         </button>
       </form>
     </div>

@@ -2,9 +2,13 @@ interface BadgeProps {
   children: React.ReactNode;
   variant?: 'success' | 'warning' | 'error' | 'info' | 'neutral';
   size?: 'sm' | 'md';
+  className?: string;
+  draggable?: boolean;
+  onDragStart?: () => void;
+  onClick?: () => void;
 }
 
-export function Badge({ children, variant = 'neutral', size = 'md' }: BadgeProps) {
+export function Badge({ children, variant = 'neutral', size = 'md', className = '', draggable, onDragStart, onClick, ...props }: BadgeProps) {
   const variants = {
     success: 'bg-green-100 text-green-800 border-green-200',
     warning: 'bg-amber-100 text-amber-800 border-amber-200',
@@ -20,7 +24,11 @@ export function Badge({ children, variant = 'neutral', size = 'md' }: BadgeProps
 
   return (
     <span
-      className={`inline-flex items-center rounded-md font-medium border ${variants[variant]} ${sizes[size]}`}
+      className={`inline-flex items-center rounded-md font-medium border ${variants[variant]} ${sizes[size]} ${className}`}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onClick={onClick}
+      {...props}
     >
       {children}
     </span>

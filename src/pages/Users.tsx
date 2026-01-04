@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { UserPlus } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Modal } from '../components/ui/Modal';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../context/AuthContext';
 import InviteUserModal from '../components/users/InviteUserModal';
@@ -22,15 +21,6 @@ export function Users() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  /* ───────────────── HARD GUARD ───────────────── */
-  if (user?.role !== 'admin') {
-    return (
-      <div className="mt-24 text-center text-gray-500">
-        Access denied
-      </div>
-    );
-  }
-
   /* ───────────────── LOAD USERS ───────────────── */
   const loadUsers = async () => {
     setLoading(true);
@@ -48,8 +38,21 @@ export function Users() {
   };
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    if (user?.role === 'admin') {
+      loadUsers();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  /* ───────────────── HARD GUARD ───────────────── */
+  if (user?.role !== 'admin') {
+    return (
+      <div className="mt-24 text-center text-gray-500">
+        Access denied
+      </div>
+    );
+  }
 
   /* ───────────────── UPDATE ROLE ───────────────── */
   const changeRole = async (
