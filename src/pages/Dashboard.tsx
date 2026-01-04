@@ -6,7 +6,7 @@ import { supabase } from '../services/supabase';
 interface Stat {
   label: string;
   value: string;
-  icon: any;
+  icon: React.ComponentType;
   color: string;
 }
 

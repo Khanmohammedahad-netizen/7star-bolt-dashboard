@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../services/supabase';
+import { Session, supabase } from '../services/supabase';
 
 interface AuthUser {
   id: string;
@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  const hydrateUser = async (session: any) => {
+  const hydrateUser = async (session: Session | null) => {
     // 🔥 DO NOT BLOCK UI IF PROFILE FAILS
     const { data: profile } = await supabase
       .from('profiles')

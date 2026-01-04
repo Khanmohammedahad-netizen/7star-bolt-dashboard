@@ -97,7 +97,7 @@ export default function CreateEventModal({
               </label>
               <select
                 value={status}
-                onChange={e => setStatus(e.target.value as any)}
+                onChange={e => setStatus(e.target.value as 'Pending' | 'Approved' | 'Rejected')}
                 className="w-full px-3 py-2 border rounded-lg"
               >
                 <option value="Pending">Pending</option>

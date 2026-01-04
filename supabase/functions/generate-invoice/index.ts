@@ -13,7 +13,7 @@ serve(async (req) => {
     }
 
     /* ───────────── REQUEST BODY ───────────── */
-    const { event, materials, payments } = await req.json();
+    const { event, materials } = await req.json();
 
     if (!event) {
       return new Response("Invalid payload", { status: 400 });
@@ -28,7 +28,7 @@ serve(async (req) => {
         : 0;
 
     const materialTotal = materials.reduce(
-      (sum: number, m: any) => sum + m.cost,
+      (sum: number, m: { cost: number }) => sum + m.cost,
       0
     );
 
@@ -56,7 +56,7 @@ serve(async (req) => {
     doc.fontSize(14).text("Materials");
     doc.moveDown(0.5);
 
-    materials.forEach((m: any) => {
+    materials.forEach((m: { name: string; cost: number }) => {
       doc
         .fontSize(11)
         .text(`${m.name}`, { continued: true })
