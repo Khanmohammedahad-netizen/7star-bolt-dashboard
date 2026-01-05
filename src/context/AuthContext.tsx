@@ -33,41 +33,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔹 Hydrate user from session
   const hydrateUser = async (session: Session) => {
     try {
-      if (!session?.user?.id) {
-        setUser(null);
-        return;
-      }
+      const userId = session.user.id;
 
-      // Attempt to fetch profile (DO NOT BLOCK UI IF THIS FAILS)
-      let profile: { role?: Role; region?: Region } | null = null;
-
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('role, region')
-          .eq('id', session.user.id)
-          .maybeSingle();
-
-        if (!error && data) {
-          profile = data;
-        }
-      } catch {
-        // ignore profile fetch failure
-      }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, region')
+        .eq('id', userId)
+        .maybeSingle();
 
       setUser({
-        id: session.user.id,
+        id: userId,
         email: session.user.email ?? '',
-        role: profile?.role ?? 'staff', // safe default
+        role: profile?.role ?? 'staff',
         region: profile?.region ?? 'UAE',
         access_token: session.access_token
       });
     } catch (err) {
-      console.error('Hydration error:', err);
-      setUser(null);
+      console.error('Hydrate user failed:', err);
+      setUser({
+        id: session.user.id,
+        email: session.user.email ?? '',
+        role: 'staff',
+        region: 'UAE',
+        access_token: session.access_token
+      });
     }
   };
 
@@ -77,17 +68,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const init = async () => {
       try {
         setLoading(true);
-
-        const { data, error } = await supabase.auth.getSession();
+        const { data } = await supabase.auth.getSession();
 
         if (!mounted) return;
 
-        if (error || !data.session) {
+        if (data?.session) {
+          await hydrateUser(data.session);
+        } else {
           setUser(null);
-          return;
         }
-
-        await hydrateUser(data.session);
       } catch (err) {
         console.error('Auth init error:', err);
         setUser(null);
@@ -104,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!session) {
           setUser(null);
+          setLoading(false);
           return;
         }
 
