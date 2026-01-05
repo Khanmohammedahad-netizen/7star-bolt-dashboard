@@ -58,6 +58,18 @@ export function Events() {
 
   useEffect(() => {
     fetchEvents();
+
+    // Real-time subscription for events
+    const channel = supabase
+      .channel('events_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
+        fetchEvents();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   /* ───────────── DRAG RESCHEDULE ───────────── */

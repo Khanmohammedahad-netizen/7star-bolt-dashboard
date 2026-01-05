@@ -46,7 +46,7 @@ export default function InviteUserModal({ onClose }: { onClose: () => void }) {
         <select
           className="w-full border px-3 py-2 rounded"
           value={region}
-          onChange={e => setRegion(e.target.value as any)}
+          onChange={e => setRegion(e.target.value as 'UAE' | 'SAUDI')}
         >
           <option value="UAE">UAE</option>
           <option value="SAUDI">Saudi Arabia</option>
