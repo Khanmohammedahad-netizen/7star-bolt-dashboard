@@ -14,8 +14,8 @@ import { AuditLog } from './pages/AuditLog';
 export default function App() {
   const { user, loading, logout } = useAuth();
 
-  // 🔄 App initialization state
-  if (loading) {
+  // ✅ ONLY block on first load (not during refresh / tab switch)
+  if (loading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
@@ -29,12 +29,12 @@ export default function App() {
     );
   }
 
-  // 🔐 Not logged in → Login page
+  // 🔐 Not logged in
   if (!user) {
     return <Login />;
   }
 
-  // 🧠 RBAC helpers
+  // 🧠 RBAC
   const isAdmin =
     user.role === 'super_admin' || user.role === 'country_admin';
 
@@ -51,20 +51,16 @@ export default function App() {
 
         <main className="flex-1 p-8 overflow-auto">
           <Routes>
-            {/* Core routes */}
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/events" element={<Events />} />
             <Route path="/events/:id" element={<EventDetail />} />
 
-            {/* Admin-only routes */}
             {isAdmin && (
               <Route path="/users" element={<Users />} />
             )}
 
-            {/* Audit (visible to all logged-in users for now) */}
             <Route path="/audit" element={<AuditLog />} />
 
-            {/* Fallback */}
             <Route path="*" element={<Navigate to="/dashboard" />} />
           </Routes>
         </main>

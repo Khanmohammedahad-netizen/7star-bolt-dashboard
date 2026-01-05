@@ -52,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (err) {
       console.error('Hydrate user failed:', err);
+      // ✅ Never block UI
       setUser({
         id: session.user.id,
         email: session.user.email ?? '',
@@ -67,7 +68,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const init = async () => {
       try {
-        setLoading(true);
         const { data } = await supabase.auth.getSession();
 
         if (!mounted) return;
@@ -88,8 +88,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     init();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         if (!mounted) return;
+
+        // ✅ DO NOT BLOCK UI on token refresh
+        if (event === 'TOKEN_REFRESHED') {
+          if (session) await hydrateUser(session);
+          return;
+        }
 
         if (!session) {
           setUser(null);
@@ -97,14 +103,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        setLoading(true);
-        await hydrateUser(session);
-        setLoading(false);
+        if (event === 'SIGNED_IN') {
+          setLoading(true);
+          await hydrateUser(session);
+          setLoading(false);
+        }
       }
     );
 
+    // ✅ HARD FAILSAFE — NEVER FREEZE
+    const failsafe = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 3000);
+
     return () => {
       mounted = false;
+      clearTimeout(failsafe);
       listener.subscription.unsubscribe();
     };
   }, []);
