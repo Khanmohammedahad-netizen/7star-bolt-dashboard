@@ -14,8 +14,8 @@ import { AuditLog } from './pages/AuditLog';
 export default function App() {
   const { user, loading, logout } = useAuth();
 
-  // ✅ ONLY block on first load (not during refresh / tab switch)
-  if (loading && !user) {
+  // ⛔ ONLY block on very first load
+  if (!user && loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
@@ -34,7 +34,6 @@ export default function App() {
     return <Login />;
   }
 
-  // 🧠 RBAC
   const isAdmin =
     user.role === 'super_admin' || user.role === 'country_admin';
 

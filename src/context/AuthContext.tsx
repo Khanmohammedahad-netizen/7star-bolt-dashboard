@@ -34,9 +34,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const hydrateUser = async (session: Session) => {
-    try {
-      const userId = session.user.id;
+    const userId = session.user.id;
 
+    try {
       const { data: profile } = await supabase
         .from('profiles')
         .select('role, region')
@@ -50,11 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         region: profile?.region ?? 'UAE',
         access_token: session.access_token
       });
-    } catch (err) {
-      console.error('Hydrate user failed:', err);
-      // ✅ Never block UI
+    } catch {
+      // 🚑 fallback — NEVER block UI
       setUser({
-        id: session.user.id,
+        id: userId,
         email: session.user.email ?? '',
         role: 'staff',
         region: 'UAE',
@@ -69,17 +68,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const init = async () => {
       try {
         const { data } = await supabase.auth.getSession();
-
         if (!mounted) return;
 
         if (data?.session) {
           await hydrateUser(data.session);
-        } else {
-          setUser(null);
         }
-      } catch (err) {
-        console.error('Auth init error:', err);
-        setUser(null);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -91,34 +84,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         if (!mounted) return;
 
-        // ✅ DO NOT BLOCK UI on token refresh
-        if (event === 'TOKEN_REFRESHED') {
-          if (session) await hydrateUser(session);
-          return;
-        }
-
         if (!session) {
           setUser(null);
           setLoading(false);
           return;
         }
 
-        if (event === 'SIGNED_IN') {
-          setLoading(true);
-          await hydrateUser(session);
-          setLoading(false);
-        }
+        // ✅ NEVER block UI on sign-in or refresh
+        await hydrateUser(session);
+        setLoading(false);
       }
     );
 
-    // ✅ HARD FAILSAFE — NEVER FREEZE
-    const failsafe = setTimeout(() => {
+    // 🛟 Absolute failsafe
+    setTimeout(() => {
       if (mounted) setLoading(false);
-    }, 3000);
+    }, 2000);
 
     return () => {
       mounted = false;
-      clearTimeout(failsafe);
       listener.subscription.unsubscribe();
     };
   }, []);
