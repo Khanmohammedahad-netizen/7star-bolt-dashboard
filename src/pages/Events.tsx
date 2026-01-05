@@ -11,9 +11,9 @@ import { useAuth } from '../context/AuthContext';
 
 interface Event {
   id: string;
-  name: string;
+  name: string; // UI name (maps to DB title)
   client: string;
-  date: string;
+  date: string; // UI date (maps to DB event_date)
   status: 'Approved' | 'Pending' | 'Rejected';
 }
 
@@ -33,22 +33,23 @@ export function Events() {
     try {
       const { data, error } = await supabase
         .from('events')
-        .select('id, name, client, event_date, status, region') // Explicitly select and alias
+        .select('id, title, client, event_date, status')
         .order('event_date', { ascending: true });
-      
-      // Map event_date to date for consistency
-      // If your database column has a different name, update DB_COLUMNS.EVENT_DATE in src/utils/dbMapping.ts
-      const mappedData = data?.map((event: any) => ({
-        ...event,
-        date: event.event_date || event.start_date || event.scheduled_date || event.date
-      }));
 
       if (error) {
-        console.error('Error fetching events:', error);
-        // Don't clear events on error, just log it
-      } else if (mappedData) {
-        setEvents(mappedData as Event[]);
+        console.error('Error fetching events:', error.message);
+        return;
       }
+
+      const mapped: Event[] = (data || []).map((event: any) => ({
+        id: event.id,
+        name: event.title,        // ✅ DB → UI
+        client: event.client,
+        date: event.event_date,   // ✅ DB → UI
+        status: event.status
+      }));
+
+      setEvents(mapped);
     } catch (err) {
       console.error('Unexpected error fetching events:', err);
     } finally {
@@ -59,12 +60,13 @@ export function Events() {
   useEffect(() => {
     fetchEvents();
 
-    // Real-time subscription for events
     const channel = supabase
       .channel('events_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
-        fetchEvents();
-      })
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'events' },
+        fetchEvents
+      )
       .subscribe();
 
     return () => {
@@ -76,7 +78,7 @@ export function Events() {
   const rescheduleEvent = async (id: string, newDate: string) => {
     await supabase
       .from('events')
-      .update({ event_date: newDate }) // Changed from 'date' to 'event_date'
+      .update({ event_date: newDate })
       .eq('id', id);
 
     fetchEvents();
@@ -190,7 +192,7 @@ export function Events() {
         )}
       </Card>
 
-      {/* CREATE MODAL */}
+      {/* CREATE EVENT MODAL */}
       {openCreate && (
         <CreateEventModal
           onClose={() => setOpenCreate(false)}
@@ -200,34 +202,22 @@ export function Events() {
               return;
             }
 
-            try {
-              const { error } = await supabase.from('events').insert({
-                name: event.name,
-                client: event.client,
-                event_date: event.date, // Map 'date' to 'event_date' for database
-                status: event.status,
-                region: user.region
-              });
-              if (error) {
-                console.error('Error creating event:', error);
-                
-                let errorMessage = error.message || 'Failed to create event. Please try again.';
-                
-                if (error.message?.includes('permission denied') || error.message?.includes('policy')) {
-                  errorMessage = 'Permission denied. Please check your database RLS policies. See SUPABASE_RLS_FIX.md for help.';
-                } else if (error.message?.includes('column') || error.message?.includes('schema')) {
-                  errorMessage = `Database error: ${error.message}. Please check your table schema.`;
-                }
-                
-                alert(`Failed to create event: ${errorMessage}`);
-                return;
-              }
-              setOpenCreate(false);
-              fetchEvents();
-            } catch (err) {
-              console.error('Unexpected error:', err);
-              alert('An unexpected error occurred. Please try again.');
+            const { error } = await supabase.from('events').insert({
+              title: event.name,          // ✅ UI → DB
+              client: event.client,
+              event_date: event.date,
+              status: event.status,
+              region: user.region,
+              created_by: user.id
+            });
+
+            if (error) {
+              alert(`Failed to create event: ${error.message}`);
+              return;
             }
+
+            setOpenCreate(false);
+            fetchEvents();
           }}
         />
       )}
